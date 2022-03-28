@@ -21,6 +21,16 @@ It has been a hard time for a painter to draw straight line, therefore we want t
     3. Acrylic sheet
     4. 2 screws with motor: for moving.
     5. A pen
+# Control
+
+    Command part:
+        
+        We use keyboard along with USART to send command to the stm32l476
+        
+    Control motor:
+        
+       We use Timer to generate PWM signal to control the motor.
+    
     
 # Demo Video
 
