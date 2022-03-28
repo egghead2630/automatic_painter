@@ -19,9 +19,11 @@ It has been a hard time for a painter to draw straight line, therefore we want t
     1. STM32L476: microcontroller 
     2. Telephone trunking: Serve as tracks and pillars
     3. Acrylic sheet
+    4. 2 screws with motor: for moving.
+    5. A pen
     
 # Demo Video
-
+    https://drive.google.com/file/d/1AopMg-GPlrBtVwBqgC9Rl-HRou11HH5e/view?usp=sharing
     
     
 
