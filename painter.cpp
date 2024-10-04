@@ -15,68 +15,13 @@ void Systick_Config(){
 	SysTick->VAL = 0;
 	SysTick->CTRL |= 0x3;		// enable CNTEN and exception enable
 }
-/*
-void ADC1_init(){
-	// enable ADC clock // clock is default SYSCLK
-	RCC->AHB2ENR |= RCC_AHB2ENR_ADCEN;
 
-	// PC0 is reset as analog mode // but just in case
-	GPIOC->MODER |= GPIO_MODER_MODE0;
-	// set PC0 ADC input(connect analog switch to analog input)
-	GPIOC->ASCR |= GPIO_ASCR_ASC0;
-								// note that PC0 corresponding to ADC123 input
-	ADC1->CFGR &= ~ADC_CFGR_RES;	// 12-bit resolution
-//	ADC1->CFGR |= ADC_CFGR_RES_0;
-	ADC1->CFGR &= ~ADC_CFGR_CONT;	// single-conversion mode // we use interrupt to read value
-	ADC1->CFGR &= ~ADC_CFGR_ALIGN; // right align
-
-	ADC123_COMMON->CCR &= ~ADC_CCR_DUAL;		// set DUAL to 0 for independent mode
-
-	ADC123_COMMON->CCR &= ~ADC_CCR_CKMODE;
-	ADC123_COMMON->CCR |= ADC_CCR_CKMODE_0;
-												// now CLK = HCLK / 1;
-
-	ADC123_COMMON->CCR &= ~ADC_CCR_PRESC;		// not adjust ADC CLK
-
-	ADC123_COMMON->CCR &= ~ADC_CCR_MDMA;
-												// no DMA
-	ADC123_COMMON->CCR &= ~ADC_CCR_DELAY; // delay: 5 adc clk cycle
-	ADC123_COMMON->CCR |= ADC_CCR_DELAY_0;
-	ADC123_COMMON->CCR |= ADC_CCR_DELAY_2;
-
-
-	ADC1->SQR1 &= ~ADC_SQR1_SQ1;
-	ADC1->SQR1 |= ADC_SQR1_SQ1_0;		// we set channel 1 of ADC1 to be rank 1
-
-	ADC1->SMPR1 &= ~ADC_SMPR1_SMP0;
-	ADC1->SMPR1 |= ADC_SMPR1_SMP0_0 | ADC_SMPR1_SMP0_1;
-										// set sampling time 011 24.5
-
-	ADC1->CR &= ~ADC_CR_DEEPPWD;		// left deep-power down mode // ready to start;
-	ADC1->CR |= ADC_CR_ADVREGEN;		// Voltage REGulator enable
-
-	for(int i = 0; i < 5000; i++);		// give it some time for voltage regulator to start
-
-	ADC1->IER |= ADC_IER_EOCIE;				// we enable the ADC to interrupt when ending regular conversion
-											// namely, read value;
-
-	NVIC_EnableIRQ(ADC1_2_IRQn);			// ADC12 interrupt enabled,for  end of conversion interrupt
-
-	ADC1->CR |= ADC_CR_ADEN;		// enable ADC
-
-	while(!(ADC1->ISR & ADC_ISR_ADRDY));	// wait until ADC ready
-}
-*/
 
 void GPIO_init()	// PC6(Tim3): PWM for two;PA0(Tim2): PWM for third, PA5: third DIR; PB6: RX, PB7: TX; PB3: two DIR, PB4: third ENA, PB5: two ENA,
 {
 	RCC->AHB2ENR |= RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOBEN | RCC_AHB2ENR_GPIOCEN;
 				// define PB6 PB7 as AF_MODE for USART1_TX USART1_RX
 	// initialize the pins
-
-//	GPIOA->MODER &= ~GPIO_MODER_MODE9;
-//	GPIOA->MODER |= GPIO_MODER_MODE9_1;	// set PA9 to AF MODE
-
 
 	GPIOB->MODER &= ~GPIO_MODER_MODE6;
 	GPIOB->MODER |=  GPIO_MODER_MODE6_1;
