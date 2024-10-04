@@ -8,20 +8,15 @@ unsigned char cmd[128];
 unsigned char msg[32]= "1\n";
 int now = 0;
 int state = 0;
-void Systick_Config()
-{
-SysTick->CTRL &= 0xFFFFFFF8;	// mask 4,2,1
-
-SysTick->CTRL |= 0x4;	// follow processor
-SysTick->LOAD = (uint32_t)(400000);		// 0.1s
-SysTick->VAL = 0;
-
-SysTick->CTRL |= 0x3;		// enable CNTEN and exception enable
-
+void Systick_Config(){
+	SysTick->CTRL &= 0xFFFFFFF8;	// mask 4,2,1
+	SysTick->CTRL |= 0x4;	// follow processor
+	SysTick->LOAD = (uint32_t)(400000);		// 0.1s
+	SysTick->VAL = 0;
+	SysTick->CTRL |= 0x3;		// enable CNTEN and exception enable
 }
 /*
-void ADC1_init()
-{
+void ADC1_init(){
 	// enable ADC clock // clock is default SYSCLK
 	RCC->AHB2ENR |= RCC_AHB2ENR_ADCEN;
 
@@ -70,7 +65,6 @@ void ADC1_init()
 	ADC1->CR |= ADC_CR_ADEN;		// enable ADC
 
 	while(!(ADC1->ISR & ADC_ISR_ADRDY));	// wait until ADC ready
-
 }
 */
 
@@ -145,8 +139,7 @@ void GPIO_init()	// PC6(Tim3): PWM for two;PA0(Tim2): PWM for third, PA5: third 
 }
 
 
-void USART1_init()
-{
+void USART1_init(){
 	RCC->APB2ENR |= RCC_APB2ENR_USART1EN;
 
 	USART1->CR1 &= ~USART_CR1_M;		// choose world length to be 8(bytes)
@@ -177,91 +170,67 @@ void USART1_init()
 // enable USART
 USART1->CR1 |= (USART_CR1_UE);
 }
-//void unable_Systick()
-//{
-//SysTick->CTRL &= 0xFFFFFFFC;
-//}
 int USART1_transmit(uint8_t *arr,uint32_t size){
-int k = 0;
-for(int i = 0; i < size; i++)
-	{
+	int k = 0;
+	for(int i = 0; i < size; i++)
+		{
+		while(!(USART1->ISR & USART_ISR_TC));
+		USART1->TDR = arr[i];
+		k++;
+		}
 	while(!(USART1->ISR & USART_ISR_TC));
-	USART1->TDR = arr[i];
-	k++;
-	}
-while(!(USART1->ISR & USART_ISR_TC));
-
-return k;
+	return k;
 }
 
-void itoab(float a)
-{
-int n = 0;
-a *= 10000.0f;
-int d = (int)a;
-while(d > 0)
-	{
+void itoab(float a){
+	int n = 0;
+	a *= 10000.0f;
+	int d = (int)a;
+	while(d > 0){
 	int b = d % 10;
 	d /= 10;
-	msg[n++] = b + 48;
+	msg[n++] = b + '0';
 	if(n == 4)
-		{
 		msg[n++] = '.';
-		}
 	}
 msg[n] = '\0';
 }
-void strrev()
-{
-int a = 0;
-int b = strlen(msg) - 1;
-while(a <= b)
-	{
-	char c = msg[a];
-	msg[a] = msg[b];
-	msg[b] = c;
-	a++;
-	b--;
+void strrev(){
+	int a = 0;
+	int b = strlen(msg) - 1;
+	while(a <= b){
+		char c = msg[a];
+		msg[a] = msg[b];
+		msg[b] = c;
+		a++;
+		b--;
 	}
 }
-void adjust()
-{
-int a = strlen(msg);
-msg[a] = '\r';
-msg[a + 1] = '\n';
-msg[a + 2] = '\0';
+void adjust(){
+	int a = strlen(msg);
+	msg[a] = '\r';
+	msg[a + 1] = '\n';
+	msg[a + 2] = '\0';
 }
-void refresh()
-{
-for(int i = 0; i < 32; i++)
-	{
-	msg[i] = '\0';
-	}
+void refresh(){
+	for(int i = 0; i < 32; i++)
+		msg[i] = '\0';	
 }
-void transmit_resistor()
-{
-refresh();
-itoab(lux);
-strrev();
-adjust();
-USART1_transmit(msg, strlen(msg));
+void transmit_resistor(){
+	refresh();
+	itoab(lux);
+	strrev();
+	adjust();
+	USART1_transmit(msg, strlen(msg));
 }
-void USART1_RECEIVE(char *c)
-{
+void USART1_RECEIVE(char *c){
 	state = 0;
 	Systick_Config();
 	while(!(USART1->ISR & USART_ISR_RXNE));	// while there is nothing to read
 	*c = USART1->RDR;
 }
-/*
-void ADC1_start()
-{
-	ADC1->CR |= ADC_CR_ADSTART;
-}
-*/
 
-void refresh_TIM3()
-{
+void refresh_TIM3(){
 	uint16_t tmp;
 	tmp = TIM3->EGR;
 	tmp &= 0xFFFE;
@@ -273,188 +242,158 @@ void refresh_TIM3()
 	tmp |= 0x1;		// reinitialize TIM3 & TIM2
 	TIM2->EGR = tmp;
 }
-void PWM_channel_init()
-{
+void PWM_channel_init(){
+	uint32_t tmp;
+	uint16_t tmp2;
+	//TIM4->CCR1 = cycle[now_rate];			// We use floor(99 / 2) = 50
+	//TIM3->CCR1 = 50;
+	TIM3->CCR1 = 50;
+	TIM2->CCR1 = 50;
+	tmp2 = TIM3->CCER;
+	tmp2 &= 0xFFFE;	// first mask CC1E to make CC1S writable
+	TIM3->CCER = tmp2;
 
-uint32_t tmp;
-uint16_t tmp2;
-//TIM4->CCR1 = cycle[now_rate];			// We use floor(99 / 2) = 50
-//TIM3->CCR1 = 50;
-TIM3->CCR1 = 50;
-TIM2->CCR1 = 50;
+	tmp2 = TIM2->CCER;
+	tmp2 &= 0xFFFE;	// first mask CC1E to make CC1S writable
+	TIM2->CCER = tmp2;
 
+	tmp = TIM3->CCMR1;
+	tmp &= 0xFFFFFFFC;	// mask CC1S to choose to be output
+	TIM3->CCMR1 = tmp;
 
+	tmp = TIM2->CCMR1;
+	tmp &= 0xFFFFFFFC;	// mask CC1S to choose to be output
+	TIM2->CCMR1 = tmp;
 
-tmp2 = TIM3->CCER;
-tmp2 &= 0xFFFE;	// first mask CC1E to make CC1S writable
-TIM3->CCER = tmp2;
+	tmp = TIM3->CCMR1;
+	tmp &= 0xFFFFFF8F;	// mask OC1M
+	tmp |= 0x60;		// set OC1M PWM_mode1;
+	TIM3->CCMR1 = tmp;
 
-tmp2 = TIM2->CCER;
-tmp2 &= 0xFFFE;	// first mask CC1E to make CC1S writable
-TIM2->CCER = tmp2;
+	tmp = TIM2->CCMR1;
+	tmp &= 0xFFFFFF8F;	// mask OC1M
+	tmp |= 0x60;		// set OC1M PWM_mode1;
+	TIM2->CCMR1 = tmp;
 
+	tmp = TIM3->CCMR1;
+	tmp &= 0xFFFFFFF7;	// mask OC1PE
+	tmp |= 0x8;		// enable OC1PE
+	TIM3->CCMR1 = tmp;
 
+	tmp = TIM2->CCMR1;
+	tmp &= 0xFFFFFFF7;	// mask OC1PE
+	tmp |= 0x8;		// enable OC1PE
+	TIM2->CCMR1 = tmp;
 
+	tmp2 = TIM3->CR1;
+	tmp2 &= 0xFF7F;
+	tmp2 |= 0x80;		// enable ARPE;
+	TIM3->CR1 = tmp2;
 
-tmp = TIM3->CCMR1;
-tmp &= 0xFFFFFFFC;	// mask CC1S to choose to be output
-TIM3->CCMR1 = tmp;
+	tmp2 = TIM2->CR1;
+	tmp2 &= 0xFF7F;
+	tmp2 |= 0x80;		// enable ARPE;
+	TIM2->CR1 = tmp2;
 
-tmp = TIM2->CCMR1;
-tmp &= 0xFFFFFFFC;	// mask CC1S to choose to be output
-TIM2->CCMR1 = tmp;
+	tmp2 = TIM3->CCER;
+	tmp2 &= 0xFFFC;		// mask CC1P & CC1E
+	tmp2 |= 0x3;		// configured them both 1, now active-low,OC1 on
+	TIM3->CCER = tmp2;
 
-
-tmp = TIM3->CCMR1;
-tmp &= 0xFFFFFF8F;	// mask OC1M
-tmp |= 0x60;		// set OC1M PWM_mode1;
-TIM3->CCMR1 = tmp;
-
-tmp = TIM2->CCMR1;
-tmp &= 0xFFFFFF8F;	// mask OC1M
-tmp |= 0x60;		// set OC1M PWM_mode1;
-TIM2->CCMR1 = tmp;
-
-tmp = TIM3->CCMR1;
-tmp &= 0xFFFFFFF7;	// mask OC1PE
-tmp |= 0x8;		// enable OC1PE
-TIM3->CCMR1 = tmp;
-
-tmp = TIM2->CCMR1;
-tmp &= 0xFFFFFFF7;	// mask OC1PE
-tmp |= 0x8;		// enable OC1PE
-TIM2->CCMR1 = tmp;
-
-
-tmp2 = TIM3->CR1;
-tmp2 &= 0xFF7F;
-tmp2 |= 0x80;		// enable ARPE;
-TIM3->CR1 = tmp2;
-
-
-tmp2 = TIM2->CR1;
-tmp2 &= 0xFF7F;
-tmp2 |= 0x80;		// enable ARPE;
-TIM2->CR1 = tmp2;
-
-
-
-tmp2 = TIM3->CCER;
-tmp2 &= 0xFFFC;		// mask CC1P & CC1E
-tmp2 |= 0x3;		// configured them both 1, now active-low,OC1 on
-TIM3->CCER = tmp2;
-
-tmp2 = TIM2->CCER;
-tmp2 &= 0xFFFC;		// mask CC1P & CC1E
-tmp2 |= 0x3;		// configured them both 1, now active-low,OC1 on
-TIM2->CCER = tmp2;
-
-
-
-refresh_TIM3();
-
+	tmp2 = TIM2->CCER;
+	tmp2 &= 0xFFFC;		// mask CC1P & CC1E
+	tmp2 |= 0x3;		// configured them both 1, now active-low,OC1 on
+	TIM2->CCER = tmp2;
+	refresh_TIM3();
 }
-void timer_init()	//initialize TIM4 here
-{
-
-uint32_t tmp;
-tmp = RCC->APB1ENR1;
-tmp &= 0xFFFFFFFC;
-tmp |= 0x3;			// enable TIM3 & TIM2 first
-RCC->APB1ENR1 = tmp;
+void timer_init(){	//initialize TIM4 here
 
 
-uint16_t tmp2;
+	uint32_t tmp;
+	tmp = RCC->APB1ENR1;
+	tmp &= 0xFFFFFFFC;
+	tmp |= 0x3;			// enable TIM3 & TIM2 first
+	RCC->APB1ENR1 = tmp;
 
 
-tmp2 = TIM3->CR1;
-tmp2 &= 0xFF8F;		// mask CMS and DIR to make down_counting and edge aligned
-tmp2 |= 0x10;
-TIM3->CR1 = tmp2;
-
-tmp2 = TIM2->CR1;
-tmp2 &= 0xFF8F;		// mask CMS and DIR to make down_counting and edge aligned
-tmp2 |= 0x10;
-TIM2->CR1 = tmp2;
+	uint16_t tmp2;
 
 
-//TIM4->PSC = 40000/440-1;
-//TIM4->PSC = 40000/261.6 - 1;
-//TIM4->PSC = 40000/293.7 - 1;
-//TIM4->PSC = 40000/329.6 - 1;
-//TIM4->PSC = 40000/349.2 - 1;
-//TIM4->PSC = 40000/392-1;
-//TIM4->PSC = 40000/440-1;
-//TIM4->PSC = 40000/493.9 - 1;
-TIM3->PSC = 40000/523.3-1;
-TIM2->PSC = 40000/523.3-1;
+	tmp2 = TIM3->CR1;
+	tmp2 &= 0xFF8F;		// mask CMS and DIR to make down_counting and edge aligned
+	tmp2 |= 0x10;
+	TIM3->CR1 = tmp2;
 
-TIM3->ARR = 99;
-TIM2->ARR = 99;
-
-refresh_TIM3();
+	tmp2 = TIM2->CR1;
+	tmp2 &= 0xFF8F;		// mask CMS and DIR to make down_counting and edge aligned
+	tmp2 |= 0x10;
+	TIM2->CR1 = tmp2;
 
 
+	//TIM4->PSC = 40000/440-1;
+	//TIM4->PSC = 40000/261.6 - 1;
+	//TIM4->PSC = 40000/293.7 - 1;
+	//TIM4->PSC = 40000/329.6 - 1;
+	//TIM4->PSC = 40000/349.2 - 1;
+	//TIM4->PSC = 40000/392-1;
+	//TIM4->PSC = 40000/440-1;
+	//TIM4->PSC = 40000/493.9 - 1;
+	TIM3->PSC = 40000/523.3-1;
+	TIM2->PSC = 40000/523.3-1;
+
+	TIM3->ARR = 99;
+	TIM2->ARR = 99;
+
+	refresh_TIM3();
 }
-void timer3_start()	// start TIM4 HERE
-{
-uint16_t tmp;
-tmp = TIM3->CR1;
-tmp &= 0xFFFE;		// mask CEN
-tmp |= 0x1;			// enable CEN
-TIM3->CR1 = tmp;	// officially cnting start!
+void timer3_start(){	// start TIM4 HERE
+	uint16_t tmp;
+	tmp = TIM3->CR1;
+	tmp &= 0xFFFE;		// mask CEN
+	tmp |= 0x1;			// enable CEN
+	TIM3->CR1 = tmp;	// officially cnting start!
 }
-void timer3_suspend()
-{
-uint16_t tmp;
-tmp = TIM3->CR1;
-tmp &= 0xFFFE;		// mask CEN
-TIM3->CR1 = tmp;	// suspend cnting by unable the CEN
+void timer3_suspend(){
+	uint16_t tmp;
+	tmp = TIM3->CR1;
+	tmp &= 0xFFFE;		// mask CEN
+	TIM3->CR1 = tmp;	// suspend cnting by unable the CEN
 }
 
-void timer2_start()	// start TIM4 HERE
-{
-uint16_t tmp;
-tmp = TIM2->CR1;
-tmp &= 0xFFFE;		// mask CEN
-tmp |= 0x1;			// enable CEN
-TIM2->CR1 = tmp;	// officially cnting start!
+void timer2_start(){	// start TIM4 HERE
+	uint16_t tmp;
+	tmp = TIM2->CR1;
+	tmp &= 0xFFFE;		// mask CEN
+	tmp |= 0x1;			// enable CEN
+	TIM2->CR1 = tmp;	// officially cnting start!
 }
-void timer2_suspend()
-{
-uint16_t tmp;
-tmp = TIM2->CR1;
-tmp &= 0xFFFE;		// mask CEN
-TIM2->CR1 = tmp;	// suspend cnting by unable the CEN
+void timer2_suspend(){
+	uint16_t tmp;
+	tmp = TIM2->CR1;
+	tmp &= 0xFFFE;		// mask CEN
+	TIM2->CR1 = tmp;	// suspend cnting by unable the CEN
 }
 
-void SysTick_Handler()
-{
-if(state == 0)
-	{
-	suspend();
-	}
+void SysTick_Handler(){
+	if(!state)
+		suspend();		
 }
 void Delay(int sec){
 	for(int i = 0; i < sec; i++)
 			Delay_1s();
 
 }
-void adjust_frequency3(int f)
-{
+void adjust_frequency3(int f){
 	TIM3->PSC = 40000 /  f - 1;
 }
-void adjust_frequency2(int f)
-{
+void adjust_frequency2(int f){
 	TIM2->PSC = 40000 /  f - 1;
 }
-void draw_bet(int sec)
-{
-right();
-Delay(sec);
+void draw_bet(int sec){
+	right();
+	Delay(sec);
 }
-void draw_C()
-{
+void draw_C(){
 	ul();
 	Delay(1);
 	up();
@@ -489,8 +428,7 @@ void draw_C()
 	Delay(1);
 
 }
-void draw_N()
-{
+void draw_N(){
 	down();
 	Delay(6);
 	up();
@@ -504,8 +442,7 @@ void draw_N()
 	down();
 	Delay(6);
 }
-void draw_T()
-{
+void draw_T(){
 	up();
 	Delay(6);
 
@@ -521,8 +458,7 @@ void draw_T()
 	down();
 	Delay(6);
 }
-void draw_U()
-{
+void draw_U(){
 	left();
 	Delay(2);
 
@@ -545,250 +481,214 @@ void draw_U()
 	Delay(5);
 
 }
-void draw_NCTU()
-{
-draw_N();
-draw_bet(3);
-draw_C();
-draw_bet(3);
-draw_T();
-draw_bet(6);
-draw_U();
-suspend();
-
-
+void draw_NCTU(){
+	draw_N();
+	draw_bet(3);
+	draw_C();
+	draw_bet(3);
+	draw_T();
+	draw_bet(6);
+	draw_U();
+	suspend();
 }
-void draw_big_NCTU()
-{
-down();
-Delay(6);
+void draw_big_NCTU(){
+	down();
+	Delay(6);
 
-right();
-Delay(1);
+	right();
+	Delay(1);
 
-up();
-Delay(5);
+	up();
+	Delay(5);
 
-adjust_frequency3(600);
-dr();
-Delay(5);
-adjust_frequency3(800);
+	adjust_frequency3(600);
+	dr();
+	Delay(5);
+	adjust_frequency3(800);
 
-right();
-Delay(18);
+	right();
+	Delay(18);
 
-up();
-Delay(1);
+	up();
+	Delay(1);
 
-left();
-Delay(1);
+	left();
+	Delay(1);
 
-ur();
-Delay(1);
+	ur();
+	Delay(1);
 
-up();
-Delay(4);
+	up();
+	Delay(4);
 
-left();
-Delay(1);
+	left();
+	Delay(1);
 
-down();
-Delay(3);
+	down();
+	Delay(3);
 
-dl();
-Delay(1);
+	dl();
+	Delay(1);
 
-left();
-Delay(1);
+	left();
+	Delay(1);
 
-ul();
-Delay(1);
+	ul();
+	Delay(1);
 
-up();
-Delay(3);
+	up();
+	Delay(3);
 
-left();
-Delay(1);
+	left();
+	Delay(1);
 
-down();
-Delay(4);
+	down();
+	Delay(4);
 
-dr();
-Delay(1);
+	dr();
+	Delay(1);
 
-left();
-Delay(4);
+	left();
+	Delay(4);
 
-up();
-Delay(4);
+	up();
+	Delay(4);
 
-right();
-Delay(2);
+	right();
+	Delay(2);
 
-up();
-Delay(1);
+	up();
+	Delay(1);
 
-left();
-Delay(5);
+	left();
+	Delay(5);
 
-down();
-Delay(1);
+	down();
+	Delay(1);
 
-right();
-Delay(2);
+	right();
+	Delay(2);
 
-down();
-Delay(4);
+	down();
+	Delay(4);
 
-left();
-Delay(3);
+	left();
+	Delay(3);
 
-up();
-Delay(1);
+	up();
+	Delay(1);
 
-left();
-Delay(2);
+	left();
+	Delay(2);
 
-ul();
-Delay(1);
+	ul();
+	Delay(1);
 
-up();
-Delay(1);
+	up();
+	Delay(1);
 
-ur();
-Delay(1);
+	ur();
+	Delay(1);
 
-right();
-Delay(2);
+	right();
+	Delay(2);
 
-up();
-Delay(1);
+	up();
+	Delay(1);
 
-left();
-Delay(3);
+	left();
+	Delay(3);
 
-dl();
-Delay(1);
+	dl();
+	Delay(1);
 
-down();
-Delay(3);
+	down();
+	Delay(3);
 
-dr();
-Delay(1);
+	dr();
+	Delay(1);
 
-left();
-Delay(2);
+	left();
+	Delay(2);
 
-up();
-Delay(5);
+	up();
+	Delay(5);
 
-left();
-Delay(1);
+	left();
+	Delay(1);
 
-down();
-Delay(5);
+	down();
+	Delay(5);
 
-adjust_frequency3(600);
-ul();
-Delay(5);
-adjust_frequency3(800);
+	adjust_frequency3(600);
+	ul();
+	Delay(5);
+	adjust_frequency3(800);
 
-left();
-Delay(1);
+	left();
+	Delay(1);
 
-suspend();
+	suspend();
 }
-void suspend()
-{
+void suspend(){
 	timer2_suspend();
 	timer3_suspend();
 }
-/*
-void ADC1_2_IRQHandler()
-{
-	while(!(ADC1->ISR & ADC_ISR_EOC));	// ensure that coversion complete
-	float a;
-	float ADC_value = 5.0f / 1024.0f;		// now resolution12-bit 4096,we use 5.0v
-//	int LDR_value = ADC1->DR;		// LDR = Light detect resistor_value is read from ADC1->DR.
-	float LDR_value = (float)ADC1->DR;
-//	float LDR_value = ADC1->DR;
-	int b = ADC1->DR;
-	lux = (float)ADC1->DR;
-//	lux = (250 / (5 * LDR_value / 4096)) - 50;
-}
 
-*/
-void up()
-{
-
-					enable();
-					//disable_two();
-					third_reclock();
-					timer2_start();
-					timer3_suspend();
+void up(){
+	enable();
+	third_reclock();
+	timer2_start();
+	timer3_suspend();
 }
-void down()
-{
-					enable();
-					//disable_two();
-					third_clock();
-					timer2_start();
-					timer3_suspend();
+void down(){
+	enable();
+	third_clock();
+	timer2_start();
+	timer3_suspend();
+}
+void left(){
+	enable();
+	two_reclock();
+	timer3_start();
+	timer2_suspend();
+}
+void right(){
+	enable();
+	two_clock();
+	timer3_start();
+	timer2_suspend();
 
 }
-void left()
-{
-
-					enable();
-					//disable_third();
-					two_reclock();
-					timer3_start();
-					timer2_suspend();
+void ul(){
+	enable();
+	third_reclock();
+	timer2_start();
+	two_reclock();
+	timer3_start();
 }
-void right()
-{
-
-					enable();
-					//disable_third();
-					two_clock();
-					timer3_start();
-					timer2_suspend();
-
+void ur(){
+	enable();
+	third_reclock();
+	timer2_start();
+	two_clock();
+	timer3_start();
 }
-void ul()
-{
-		enable();
-		third_reclock();
-		timer2_start();
-		two_reclock();
-		timer3_start();
+void dl(){
+	enable();
+	third_clock();
+	timer2_start();
+	two_reclock();
+	timer3_start();
 }
-void ur()
-{
-		enable();
-		third_reclock();
-		timer2_start();
-		two_clock();
-		timer3_start();
+void dr(){
+	enable();
+	third_clock();
+	timer2_start();
+	two_clock();
+	timer3_start();
 }
-void dl()
-{
-		enable();
-		third_clock();
-		timer2_start();
-		two_reclock();
-		timer3_start();
-}
-void dr()
-{
-			enable();
-			third_clock();
-			timer2_start();
-			two_clock();
-			timer3_start();
-}
-void draw_triangle()
-{
+void draw_triangle(){
 	dl();
 	Delay(3);
 	right();
@@ -798,10 +698,9 @@ void draw_triangle()
 	suspend();
 }
 void read_from_input(){
-char c1;
+	char c1;
 	now = 0;
-	do
-	{
+	do{
 	USART1_RECEIVE(&c1);
 	state = 1;
 		if(c1 == '\r')	// if we meet backcar then there must be an enter
@@ -820,19 +719,16 @@ char c1;
 		else				// all other cases, count this char into account
 			{
 			if(c1 == 'd' || c1 == 'D')
-			//if(c1 == '1')
 				{
 				adjust_frequency3(800);
 				right();
 				}
 			else if(c1 == 'a' || c1 == 'A')
-			//else if(c1 == '2')
 				{
 				adjust_frequency3(800);
 				left();
 				}
 			else if(c1 == 's' || c1 == 'S')
-		//	else if(c1 == '3')
 				{
 				adjust_frequency2(800);
 				down();
@@ -846,28 +742,24 @@ char c1;
 							{
 							adjust_frequency2(800);
 							adjust_frequency3(800);
-							//adjust_frequency3(600);
 							ul();
 							}
 			else if(c1 == 'E' || c1 == 'e')
 							{
 							adjust_frequency2(800);
 							adjust_frequency3(800);
-							//adjust_frequency3(600);
 							ur();
 							}
 			else if(c1 == 'Z' || c1 == 'z')
 							{
 							adjust_frequency2(800);
 							adjust_frequency3(800);
-							//adjust_frequency3(600);
 							dl();
 							}
 			else if(c1 == 'C' || c1 == 'c')
 							{
 							adjust_frequency2(800);
 							adjust_frequency3(800);
-							//adjust_frequency3(600);
 							dr();
 							}
 			else if(c1 == 'N' || c1 == 'n')
@@ -896,181 +788,85 @@ char c1;
 			USART1_transmit(&c1,1);
 			}
 		}while(c1 != '\0');
-cmd[now] = '\0';
+	cmd[now] = '\0';
 }
-void two_clock()	// set PB3 0 for active low;
-{
-GPIOB->ODR &= 0xFFFFFFF7;
+void two_clock(){	// set PB3 0 for active low;
+	GPIOB->ODR &= 0xFFFFFFF7;
 }
-void two_reclock()		// set PB3 1
-{
-GPIOB->ODR &= 0xFFFFFFF7;
-GPIOB->ODR |= 0x8;
+void two_reclock(){		// set PB3 1
+	GPIOB->ODR &= 0xFFFFFFF7;
+	GPIOB->ODR |= 0x8;
 }
-void third_clock()
-{
-GPIOA->ODR &= 0xFFFFFFDF;
+void third_clock(){
+	GPIOA->ODR &= 0xFFFFFFDF;
 }
-void third_reclock()
-{
-GPIOA->ODR &= 0xFFFFFFDF;
-GPIOA->ODR |= 0x20;
+void third_reclock(){
+	GPIOA->ODR &= 0xFFFFFFDF;
+	GPIOA->ODR |= 0x20;
 }
-void enable_two()
-{
+void enable_two(){
 	GPIOB->ODR &= 0xFFFFFFDF;
 }
-void disable_two()
-{
+void disable_two(){
 	GPIOB->ODR &= 0xFFFFFFDF;
 	GPIOB->ODR |= 0x20;
 }
-void disable_third()
-{
+void disable_third(){
 	GPIOB->ODR &= 0xFFFFFFEF;
 	GPIOB->ODR |= 0x10;
 }
-void enable_third()
-{
+void enable_third(){
 	GPIOB->ODR &= 0xFFFFFFEF;
 }
-void enable()
-{
+void enable(){
 	enable_two();
 	enable_third();
 }
-int check_q()
-{
-while(USART1->ISR & USART_ISR_RXNE)
-	{
-	char c1;
-	c1 = USART1->RDR;
-	USART1_transmit((uint8_t *)&c1,1);
-	if(c1 == 'q')
+int check_q(){
+	while(USART1->ISR & USART_ISR_RXNE){
+		char c1;
+		c1 = USART1->RDR;
+		USART1_transmit((uint8_t *)&c1,1);
+		if(c1 == 'q')
 			return 1;
 	}
 return 0;
 }
-void str_cpy(char *c1,char *c2)
-{
-int cnt = 0;
-for(int i = 0; i < strlen(c2); i++)
-	{
-	c1[cnt++] = c2[i];
-	}
-c1[cnt] = '\0';
+void str_cpy(char *c1,char *c2){
+	int cnt = 0;
+	for(int i = 0; i < strlen(c2); i++)
+		c1[cnt++] = c2[i];
+	c1[cnt] = '\0';
 }
-int str_cmp(char *c1,char *c2)
-{
-if(strlen(c1) != strlen(c2))
-	{
-	return -1;
-	}
-else
-	{
+int str_cmp(char *c1,char *c2){
+	if(strlen(c1) != strlen(c2))
+		return -1;
+	else{
 	for(int i = 0; i < strlen(c1); i++)
-		{
 		if(c1[i] != c2[i])
 			return -1;
-		}
 	return 0;
 	}
 }
-void led_show()
-{
-uint32_t tmp = 0x8;
-tmp &= GPIOB->ODR;
-if(tmp == 0)
-	{
-	USART1_transmit((uint8_t *)"LIGHT\r\n",7);
-	}
-else
-	{
-	USART1_transmit((uint8_t *)"DARK\r\n",7);
-	}
-}
-void main()
-{
-unsigned char err[32] = "[Invalid Command]\r\n";
-fpu_enable();
-GPIO_init();
-//ADC1_init();
-timer_init();
-PWM_channel_init();
-Systick_Config();
-int a;
 
-/*
-Delay_1s();
-Delay_1s();
-Delay_1s();
-Delay_1s();
-Delay_1s();
-Delay_1s();
-Delay_1s();
-Delay_1s();
-Delay_1s();
-*/
-
-do {
-a = Delay_1s();
-}while(a != 1);
-USART1_init();			// after we ensure to open then open
+void main(){
+	unsigned char err[32] = "[Invalid Command]\r\n";
+	fpu_enable();
+	GPIO_init();
+	timer_init();
+	PWM_channel_init();
+	Systick_Config();
+	int a;
+	do {
+	a = Delay_1s();
+	}while(a != 1);
+	USART1_init();			// after we ensure to open then open
 						// or noise will destroy the program
-
-while(1){
-
+	while(1){
 		str_cpy(msg,"> ");
 		USART1_transmit(msg, strlen(msg));
-	read_from_input();
-
-	if(!str_cmp(cmd,"showid"))
-				{
-				}
-
-
-
-		str_cpy(msg,"> ");
-		USART1_transmit(msg, strlen(msg));
-		//Delay_1s();
 		read_from_input();
-		if(!str_cmp(cmd,"showid"))
-			{
-			}
-		else if(!str_cmp(cmd,"led on"))
-			{
-
-			}
-		else if(!str_cmp(cmd,"led off"))
-			{
-
-			}
-		else if(!str_cmp(cmd,"led show"))
-			{
-			}
-		else if(!str_cmp(cmd,"light"))
-			{
-		//	int q = 0;
-			//do
-				//{
-			//	transmit_resistor();
-				//Delay_1s();
-				//q = check_q();
-				//}while(!q);
-			}
-		else if(strlen(cmd) == 0)
-			{
-			continue;
-			}
-		else
-			{
-			//int a = strlen(cmd) > 0?strlen(cmd) : 0;
-			//itoab(now);
-			//USART1_transmit(msg,strlen(msg));
-			//USART1_transmit((uint8_t *)"Invalid Command\r\n",17);
-			}
-
-}
+	}
 
 }
 
